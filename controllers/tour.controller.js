@@ -1,43 +1,7 @@
 const fs = require('fs');
-const path = require('path');
-const express = require('express');
-const morgan = require('morgan');
+const tours = JSON.parse(fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`));
 
-const app = express();
-
-
-/****************** Middlewares *******************/
-
-app.use(express.json());
-
-const appLogStream = fs.createWriteStream(path.join(__dirname, 'app.log'), { flags: 'a' });
-app.use(morgan('combined', { stream: appLogStream }));
-
-const requestTime = (request, response, next) => {
-    request.requestTime = new Date().toISOString();
-    next();
-}
-app.use(requestTime);
-
-
-/****************** Routes Handlers *******************/
-
-app.get('/', (request, response) => {
-    response
-        .status(200)
-        .set({
-            'Custom-Header': 'This is the customer header.',
-        })
-        .cookie('customCookie', 'customCookie', {
-            maxAge: 900000,
-            httpOnly: true,
-        })
-        .json({ message: 'Hello From Server.' });
-});
-
-const tours = JSON.parse(fs.readFileSync(`${__dirname}/dev-data/data/tours-simple.json`));
-
-const getTours = (request, response) => {
+exports.getTours = (request, response) => {
     try {
         response.status(200).json({
             status: 'success',
@@ -58,7 +22,7 @@ const getTours = (request, response) => {
     }
 }
 
-const getTour = (request, response) => {
+exports.getTour = (request, response) => {
     try {
         const tour = tours.find((element) => {
             return element.id === Number(request.params.id);
@@ -95,7 +59,7 @@ const getTour = (request, response) => {
     }
 }
 
-const createTour = (request, response) => {
+exports.createTour = (request, response) => {
     try {
         const tour = Object.assign({ id: tours[tours.length - 1].id + 1 }, request.body);
         tours.push(tour);
@@ -130,7 +94,7 @@ const createTour = (request, response) => {
     }
 }
 
-const updateTour = (request, response) => {
+exports.updateTour = (request, response) => {
     try {
         let tour = tours.find((element) => {
             return element.id === Number(request.params.id);
@@ -184,7 +148,7 @@ const updateTour = (request, response) => {
     }
 }
 
-const deleteTour = (request, response) => {
+exports.deleteTour = (request, response) => {
     try {
         const tour = tours.find((element) => {
             return element.id === Number(request.params.id);
@@ -234,16 +198,3 @@ const deleteTour = (request, response) => {
         });
     }
 }
-
-/****************** Routes *******************/
-
-const toursRouter = express.Router();
-app.use('/api/v1/tours', toursRouter);
-
-toursRouter.route('/').get(getTours).post(createTour);
-toursRouter.route('/:id').get(getTour).patch(updateTour).delete(deleteTour);
-
-/****************** Server *******************/
-app.listen(process.env.PORT || 8000, () => {
-    console.log('Server is running.');
-});
