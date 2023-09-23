@@ -19,6 +19,7 @@ const requestTime = (request, response, next) => {
 }
 app.use(requestTime);
 
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 app.get('/', (request, response) => {
