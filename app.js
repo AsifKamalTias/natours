@@ -7,10 +7,10 @@ const morgan = require('morgan');
 const app = express();
 
 //Middlewares
-app.use(express.json());
-
 const appLogStream = fs.createWriteStream(path.join(__dirname, 'app.log'), { flags: 'a' });
 app.use(morgan('combined', { stream: appLogStream }));
+
+app.use(express.json());
 
 const requestTime = (request, response, next) => {
     request.requestTime = new Date().toISOString();
