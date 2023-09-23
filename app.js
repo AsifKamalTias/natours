@@ -6,7 +6,6 @@ const morgan = require('morgan');
 //APP
 const app = express();
 
-
 //Middlewares
 app.use(express.json());
 
@@ -34,6 +33,9 @@ app.get('/', (request, response) => {
         })
         .json({ message: 'Hello From Server.' });
 });
+
+const oldToursRouter = require('./routes/oldTour.route');
+app.use('/api/v0/tours', oldToursRouter);
 
 const toursRouter = require('./routes/tour.route');
 app.use('/api/v1/tours', toursRouter);
