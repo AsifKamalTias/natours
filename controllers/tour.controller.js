@@ -1,29 +1,16 @@
-const Tour = require('../models/tour.model')
+const Tour = require('../models/tour.model');
+const APIFeatures = require('../utils/apiFeatures');
+
+exports.aliasTopTours = (request, response, next) => {
+    request.query.limit = "5";
+    request.query.sort = "-ratingsAverage,price";
+    next();
+}
 
 exports.getTours = async (request, response) => {
     try {
-        const queries = { ...request.query };
-        const specialQueries = ['page', 'sort', 'limit', 'fields'];
-        specialQueries.forEach((element) => {
-            delete queries[element];
-        });
-
-        let query = JSON.stringify(queries);
-
-        //filtering
-        query = query.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
-        query = JSON.parse(query);
-
-        let results = Tour.find(query);
-        //sorting
-        if (request.query.sort) {
-            results = results.sort(request.query.sort.split(',').join(' '));
-        }
-        else {
-            results = results.sort('-createdAt');
-        }
-
-        const tours = await results;
+        let results = new APIFeatures(Tour.find(), request.query).filter().sort().select();
+        const tours = await results.query;
 
         response.status(200).json({
             status: 'success',
@@ -143,6 +130,103 @@ exports.deleteTour = async (request, response) => {
             message: 'Tour deleted successfully',
             requestedAt: request.requestTime,
             data: null
+        });
+    }
+    catch (error) {
+        response.status(500).json({
+            status: 'fail',
+            message: error.message,
+            requestedAt: request.requestTime,
+            data: null,
+        });
+    }
+}
+
+exports.stats = async (request, response) => {
+    try {
+        const stats = await Tour.aggregate([
+            {
+                $match: { ratingAverage: { $gte: 4.5 } }
+            },
+            {
+                $group: {
+                    // _id: '$difficulty', //null for group by each document
+                    _id: { $toUpper: '$difficulty' },
+                    num: { $sum: 1 },
+                    numRatings: { $sum: '$ratingQuantity' },
+                    avgRating: { $avg: '$ratingAverage' },
+                    avgPrice: { $avg: '$price' },
+                    minPrice: { $min: '$price' },
+                    maxPrice: { $max: '$price' },
+                }
+            },
+            {
+                $sort: { avgPrice: 1 }
+            },
+            // {
+            //     $match: { _id: { $ne: 'EASY' } }
+            // }
+        ]);
+
+        response.status(200).json({
+            status: 'success',
+            message: 'Tour statistics found',
+            requestedAt: request.requestTime,
+            data: {
+                stats
+            }
+        });
+    }
+    catch (error) {
+        response.status(500).json({
+            status: 'fail',
+            message: error.message,
+            requestedAt: request.requestTime,
+            data: null,
+        });
+    }
+}
+
+exports.yearlyReport = async (request, response) => {
+    try {
+        const year = request.params.year;
+        const reports = await Tour.aggregate([
+            {
+                $unwind: '$startDates'
+            },
+            {
+                $match: {
+                    startDates: {
+                        $gte: new Date(`${year}-01-01`),
+                        $lte: new Date(`${year}-12-31`)
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: { $month: '$startDates' },
+                    numTours: { $sum: 1 },
+                    tours: { $push: '$name' }
+                }
+            },
+            {
+                $addFields: { month: '$_id' }
+            },
+            {
+                $project: { _id: 0 }
+            },
+            {
+                $sort: { month: 1 }
+            }
+        ]);
+
+        response.status(200).json({
+            status: 'success',
+            message: 'Tour statistics found',
+            requestedAt: request.requestTime,
+            data: {
+                reports
+            }
         });
     }
     catch (error) {
