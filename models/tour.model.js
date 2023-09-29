@@ -1,11 +1,21 @@
 const mongoose = require('mongoose');
+const slugify = require('slugify');
+const validator = require('validator');
 
 const tourSchema = new mongoose.Schema({
     name: {
         type: String,
         trim: true,
         required: [true, 'Name is required'],
-        unique: true
+        unique: true,
+        minlength: [5, 'Name must have minimum 5 characters'],
+        maxlength: [40, 'Name can be maximum 40 characters'],
+        // validate: [validator.isAlpha, 'Name must contain only character'] // using validator package
+    },
+    slug: String,
+    secretTour: {
+        type: Boolean,
+        default: false
     },
     duration: {
         type: Number,
@@ -17,11 +27,17 @@ const tourSchema = new mongoose.Schema({
     },
     difficulty: {
         type: String,
-        required: [true, 'Difficulty is required']
+        required: [true, 'Difficulty is required'],
+        enum: {
+            values: ['easy', 'medium', 'difficult'],
+            message: "Difficulty can be either easy, medium, hard"
+        }
     },
     ratingAverage: {
         type: Number,
-        default: 4.5
+        default: 4.5,
+        min: [1, 'Minimum rating can be 1'],
+        max: [5, 'Maximum rating can be 5']
     },
     ratingQuantity: {
         type: Number,
@@ -31,7 +47,15 @@ const tourSchema = new mongoose.Schema({
         type: Number,
         required: [true, 'Price is required']
     },
-    priceDiscount: Number,
+    priceDiscount: {
+        type: Number,
+        validate: {
+            validator: function (value) {
+                return value < this.price
+            },
+            message: 'Discount price ({VALUE}) should be less than price'
+        }
+    },
     summary: {
         type: String,
         trim: true,
@@ -52,6 +76,35 @@ const tourSchema = new mongoose.Schema({
         default: Date.now(),
         select: false
     }
+},
+    {
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true }
+    }
+);
+
+tourSchema.virtual('durationWeeks').get(function () {
+    return this.duration / 7;
+});
+
+tourSchema.pre('save', function (next) {
+    this.slug = slugify(this.name, { lower: true });
+    next();
+});
+
+// tourSchema.post('save', function (document, next) {
+//     console.log('Document saved.');
+//     next();
+// });
+
+tourSchema.pre('/^find/', function (next) {
+    this.find({ secretTour: { $ne: true } });
+    next();
+});
+
+tourSchema.pre('aggregate', function (next) {
+    this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
+    next();
 });
 
 module.exports = mongoose.model('Tour', tourSchema);

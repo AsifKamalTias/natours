@@ -40,4 +40,11 @@ app.use('/api/v0/tours', oldToursRouter);
 const toursRouter = require('./routes/tour.route');
 app.use('/api/v1/tours', toursRouter);
 
+app.all('*', (request, response, next) => {
+    response.status(404).json({
+        status: 'fail',
+        message: `${request.originalUrl} not found`
+    });
+});
+
 module.exports = app;
