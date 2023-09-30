@@ -23,7 +23,8 @@ const userSchema = new mongoose.Schema({
                 return /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$/.test(value);
             },
             message: 'Password must contain at least one uppercase, one lowercase, one digit and one special character'
-        }
+        },
+        select: false
     },
     confirmPassword: {
         type: String,
@@ -33,7 +34,8 @@ const userSchema = new mongoose.Schema({
                 return value === this.password;
             },
             message: 'Confirm Password must be same as password'
-        }
+        },
+        select: false
     },
 });
 
@@ -45,5 +47,9 @@ userSchema.pre('save', async function (next) {
 
     next();
 });
+
+userSchema.methods.checkPassword = async function (candidatePassword, password) {
+    return await bcrypt.compare(candidatePassword, password);
+}
 
 module.exports = mongoose.model('User', userSchema);
