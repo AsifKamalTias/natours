@@ -40,6 +40,9 @@ app.use('/api/v0/tours', oldToursRouter);
 const toursRouter = require('./routes/tour.route');
 app.use('/api/v1/tours', toursRouter);
 
+const usersRouter = require('./routes/user.route');
+app.use('/api/v1/users', usersRouter);
+
 app.all('*', (request, response, next) => {
     response.status(404).json({
         status: 'fail',
