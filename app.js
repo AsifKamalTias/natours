@@ -25,13 +25,13 @@ app.get('/', (request, response) => {
     response
         .status(200)
         .set({
-            'Custom-Header': 'This is the customer header.',
+            'Natours-Header': 'Natours',
         })
-        .cookie('customCookie', 'customCookie', {
+        .cookie('natoursCookie', 'natours', {
             maxAge: 900000,
             httpOnly: true,
         })
-        .json({ message: 'Hello From Server.' });
+        .json({ message: 'Hello From Natours' });
 });
 
 const oldToursRouter = require('./routes/oldTour.route');
