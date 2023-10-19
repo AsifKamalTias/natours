@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
 
 //APP
 const app = express();
@@ -9,6 +10,14 @@ const app = express();
 //Middlewares
 const appLogStream = fs.createWriteStream(path.join(__dirname, 'app.log'), { flags: 'a' });
 app.use(morgan('combined', { stream: appLogStream }));
+
+const apiLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 100,
+    message: 'Too many requests'
+});
+
+app.use('/api', apiLimiter);
 
 app.use(express.json());
 

@@ -1,6 +1,17 @@
 const User = require('../models/user.model');
 const APIFeatures = require('../utils/apiFeatures');
 
+const filterData = (data, ...fields) => {
+    const filteredData = {};
+    Object.keys(data).forEach((element) => {
+        if (fields.includes(element)) {
+            filteredData[element] = data[element];
+        }
+    });
+
+    return filteredData;
+}
+
 exports.getUsers = async (request, response) => {
     try {
         let results = new APIFeatures(User.find(), request.query).filter().sort().select();
@@ -122,6 +133,65 @@ exports.deleteUser = async (request, response) => {
         response.status(200).json({
             status: 'success',
             message: 'User deleted successfully',
+            requestedAt: request.requestTime,
+            data: null
+        });
+    }
+    catch (error) {
+        response.status(500).json({
+            status: 'fail',
+            message: error.message,
+            requestedAt: request.requestTime,
+            data: null,
+        });
+    }
+}
+
+exports.updateProfile = async (request, response) => {
+    try {
+        if (request.body.password || request.body.confirmPassword) {
+            response.status(400).json({
+                status: 'fail',
+                message: 'Cannot update password',
+                requestedAt: request.requestTime,
+                data: null
+            });
+            return;
+        }
+
+        const filteredData = filterData(request.body, 'name', 'email');
+
+        const user = await User.findByIdAndUpdate(request.user.id, filteredData, {
+            new: true,
+            runValidators: true
+        });
+
+        response.status(200).json({
+            status: 'success',
+            message: 'Profile updated successfully',
+            requestedAt: request.requestTime,
+            data: {
+                user
+            }
+        });
+    }
+    catch (error) {
+        response.status(500).json({
+            status: 'fail',
+            message: error.message,
+            requestedAt: request.requestTime,
+            data: null,
+        });
+    }
+}
+
+exports.deleteProfile = async (request, response) => {
+    try {
+        await User.findByIdAndUpdate(request.user.id, { isActive: false });
+
+        response.status(200).json({
+            status: 'success',
+            message: 'Profile deleted successfully',
             requestedAt: request.requestTime,
             data: null
         });

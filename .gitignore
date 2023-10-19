@@ -2,3 +2,4 @@ node_modules
 app.log
 .env
 .prettierrc
+note.txt

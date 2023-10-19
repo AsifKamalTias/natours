@@ -8,7 +8,19 @@ const generateJWTToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRES_IN
     });
+}
 
+const getJWTCookieOptions = () => {
+    const cookieConfig = {
+        expires: new Date(Date.now() + (process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000)),
+        httpOnly: true
+    }
+
+    if (process.env.APP_ENV !== 'development') {
+        cookieConfig.secure = true;
+    }
+
+    return cookieConfig;
 }
 
 exports.protect = async (request, response, next) => {
@@ -97,15 +109,18 @@ exports.signUp = async (request, response) => {
             confirmPassword: request.body.confirmPassword
         });
 
+        user.password = undefined;
+
         const token = generateJWTToken(user._id);
+
+        response.cookie('jwt', token, getJWTCookieOptions());
 
         response.status(201).json({
             status: 'success',
             message: 'Signed up successfully',
             requestedAt: request.requestTime,
             data: {
-                user,
-                token
+                user
             }
         });
     }
@@ -130,13 +145,13 @@ exports.login = async (request, response) => {
                     if (await user.matchPassword(password, user.password)) {
                         const token = generateJWTToken(user._id);
 
+                        response.cookie('jwt', token, getJWTCookieOptions());
+
                         response.status(200).json({
                             status: 'success',
                             message: 'Logged in successfully',
                             requestedAt: request.requestTime,
-                            data: {
-                                token
-                            }
+                            data: null,
                         });
                     }
                     else {
@@ -251,14 +266,54 @@ exports.resetPassword = async (request, response) => {
 
         const token = generateJWTToken(user._id);
 
+        response.cookie('jwt', token, getJWTCookieOptions());
+
         response.status(200).json({
             status: 'success',
             message: 'Password reset successfully',
             requestedAt: request.requestTime,
-            data: {
-                token
-            }
+            data: null
         });
+    }
+    catch (error) {
+        response.status(500).json({
+            status: 'fail',
+            message: error.message,
+            requestedAt: request.requestTime,
+            data: null,
+        });
+    }
+}
+
+exports.updatePassword = async (request, response) => {
+    try {
+        const user = await User.findById(request.user.id).select('+password');
+
+        if (!user.matchPassword(request.body.currentPassword, user.password)) {
+            response.status(401).json({
+                status: 'fail',
+                message: 'Current password is wrong',
+                requestedAt: request.requestTime,
+                data: null,
+            });
+            return;
+        }
+
+        user.password = request.body.password;
+        user.confirmPassword = request.body.confirmPassword;
+        await user.save();
+
+        const token = generateJWTToken(user.id);
+
+        response.cookie('jwt', token, getJWTCookieOptions());
+
+        response.status(200).json({
+            status: 'success',
+            message: 'Password updated successfully',
+            requestedAt: request.requestTime,
+            data: null
+        });
+
     }
     catch (error) {
         response.status(500).json({
