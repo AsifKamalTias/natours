@@ -3,11 +3,17 @@ const path = require('path');
 const express = require('express');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
 
 //APP
 const app = express();
 
 //Middlewares
+app.use(helmet());
+
 const appLogStream = fs.createWriteStream(path.join(__dirname, 'app.log'), { flags: 'a' });
 app.use(morgan('combined', { stream: appLogStream }));
 
@@ -20,6 +26,12 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter);
 
 app.use(express.json());
+
+app.use(mongoSanitize());
+
+app.use(xss());
+
+app.use(hpp());
 
 const requestTime = (request, response, next) => {
     request.requestTime = new Date().toISOString();
@@ -51,6 +63,9 @@ app.use('/api/v1/tours', toursRouter);
 
 const usersRouter = require('./routes/user.route');
 app.use('/api/v1/users', usersRouter);
+
+const reviewsRouter = require('./routes/review.route');
+app.use('/api/v1/reviews', reviewsRouter);
 
 app.all('*', (request, response, next) => {
     response.status(404).json({

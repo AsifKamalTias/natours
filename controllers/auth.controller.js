@@ -23,6 +23,7 @@ const getJWTCookieOptions = () => {
     return cookieConfig;
 }
 
+//protect -> token check from header
 exports.protect = async (request, response, next) => {
     try {
         let token;
@@ -83,8 +84,70 @@ exports.protect = async (request, response, next) => {
             data: null,
         });
     }
-
 }
+
+//protect -> token check from cookie
+// exports.protect = async (request, response, next) => {
+//     try {
+//         let token;
+//         if (request.cookies.jwt) {
+//             token = request.cookies.jwt;
+//         }
+
+//         if (token) {
+//             const decodedToken = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+//             if (decodedToken) {
+//                 const user = await User.findById(decodedToken.id);
+//                 if (user) {
+//                     if (user.passwordChangedAfter(decodedToken.iat)) {
+//                         response.status(401).json({
+//                             status: 'fail',
+//                             message: 'Authorization failed',
+//                             requestedAt: request.requestTime,
+//                             data: null,
+//                         });
+//                     }
+//                     else {
+//                         request.user = user;
+//                         next();
+//                     }
+//                 }
+//                 else {
+//                     response.status(401).json({
+//                         status: 'fail',
+//                         message: 'Authorization failed',
+//                         requestedAt: request.requestTime,
+//                         data: null,
+//                     });
+//                 }
+//             }
+//             else {
+//                 response.status(401).json({
+//                     status: 'fail',
+//                     message: 'Authorization failed',
+//                     requestedAt: request.requestTime,
+//                     data: null,
+//                 });
+//             }
+//         }
+//         else {
+//             response.status(401).json({
+//                 status: 'fail',
+//                 message: 'Authorization failed',
+//                 requestedAt: request.requestTime,
+//                 data: null,
+//             });
+//         }
+//     }
+//     catch (error) {
+//         response.status(401).json({
+//             status: 'fail',
+//             message: 'Authorization failed',
+//             requestedAt: request.requestTime,
+//             data: null,
+//         });
+//     }
+// }
 
 exports.restrict = (...roles) => {
     return (request, response, next) => {
