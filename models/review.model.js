@@ -32,14 +32,49 @@ const reviewSchema = new mongoose.Schema({
     toObject: { virtuals: true }
 });
 
-// reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
+reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
+
+reviewSchema.statics.calculateAverageRatings = async function (tourId) {
+    const stats = await this.aggregate([
+        {
+            $match: { tour: tourId }
+        },
+        {
+            $group: {
+                _id: '$tour',
+                nRating: { $sum: 1 },
+                avgRating: { $avg: '$rating' }
+            }
+        }
+    ]);
+
+    if (stats.length > 0) {
+        await this.model('Tour').findByIdAndUpdate(tourId, {
+            ratingsQuantity: stats[0].nRating,
+            ratingsAverage: stats[0].avgRating
+        });
+    }
+    else {
+        await this.model('Tour').findByIdAndUpdate(tourId, {
+            ratingsQuantity: 0,
+            ratingsAverage: 4.5
+        });
+    }
+}
 
 reviewSchema.pre(/^find/, function (next) {
     this.populate({
         path: 'user',
         select: 'name photo'
+    }).populate({
+        path: 'tour',
+        select: 'name'
     });
     next();
+});
+
+reviewSchema.post('save', function () {
+    this.constructor.calculateAverageRatings(this.tour);
 });
 
 module.exports = mongoose.model('Review', reviewSchema);

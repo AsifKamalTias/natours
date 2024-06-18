@@ -3,6 +3,8 @@ const APIFeatures = require('../utils/apiFeatures');
 
 exports.getReviews = async (request, response) => {
     try {
+        if(request.params.tourId) request.query.tour = request.params.tourId;
+        
         let results = new APIFeatures(Review.find(), request.query).filter().sort().select();
         const reviews = await results.query;
 
@@ -59,6 +61,9 @@ exports.getReview = async (request, response) => {
 
 exports.createReview = async (request, response) => {
     try {
+        if (!request.body.tour) request.body.tour = request.params.tourId;
+        if (!request.body.user) request.body.user = request.user.id;
+
         const review = await Review.create(request.body);
         response.status(201).json({
             status: 'success',

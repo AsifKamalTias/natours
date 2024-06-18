@@ -33,7 +33,7 @@ exports.getTours = async (request, response) => {
 
 exports.getTour = async (request, response) => {
     try {
-        const tour = await Tour.findById(request.params.id);
+        const tour = await Tour.findById(request.params.id).populate('reviews');
         if (tour) {
             response.status(200).json({
                 status: 'success',
@@ -226,6 +226,105 @@ exports.yearlyReport = async (request, response) => {
             requestedAt: request.requestTime,
             data: {
                 reports
+            }
+        });
+    }
+    catch (error) {
+        response.status(500).json({
+            status: 'fail',
+            message: error.message,
+            requestedAt: request.requestTime,
+            data: null,
+        });
+    }
+}
+
+exports.tourWithing = async (request, response) => {
+    try {
+        const { distance, latlng, unit } = request.params;
+        const [lat, lng] = latlng.split(',');
+
+        const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
+
+        if (!lat || !lng) {
+            response.status(400).json({
+                status: 'fail',
+                message: 'Please provide latitude and longitude in the format lat,lng',
+                requestedAt: request.requestTime,
+                data: null,
+            });
+            return;
+        }
+
+        const tours = await Tour.find({
+            startLocation: {
+                $geoWithin: {
+                    $centerSphere: [[lng, lat], radius]
+                }
+            }
+        });
+
+        response.status(200).json({
+            status: 'success',
+            message: 'Tours found',
+            requestedAt: request.requestTime,
+            data: {
+                tours
+            }
+        });
+    }
+    catch (error) {
+        response.status(500).json({
+            status: 'fail',
+            message: error.message,
+            requestedAt: request.requestTime,
+            data: null,
+        });
+    }
+}
+
+exports.tourDistances = async (request, response) => {
+    try {
+        const { latlng, unit } = request.params;
+        const [lat, lng] = latlng.split(',');
+
+        const multiplier = unit === 'mi' ? 0.000621371 : 0.001;
+
+        if (!lat || !lng) {
+            response.status(400).json({
+                status: 'fail',
+                message: 'Please provide latitude and longitude in the format lat,lng',
+                requestedAt: request.requestTime,
+                data: null,
+            });
+            return;
+        }
+
+        const distances = await Tour.aggregate([
+            {
+                $geoNear: {
+                    near: {
+                        type: 'Point',
+                        coordinates: [Number(lng), Number(lat)]
+                    },
+                    distanceField: 'distance',
+                    distanceMultiplier: multiplier
+                }
+            },
+            {
+                $project: {
+                    distance: 1,
+                    name: 1
+                }
+            }
+        ]);
+
+        response.status(200).json({
+            status: 'success',
+            message: 'Tours found',
+            requestedAt: request.requestTime,
+            data: {
+                distances
             }
         });
     }
